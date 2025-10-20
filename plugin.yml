@@ -1,0 +1,13 @@
+name: Git Checkout Flags
+description: Control git clone, fetch, and clean flags during checkout
+author: https://github.com/envato
+requirements: []
+configuration:
+  properties:
+    clone:
+      type: string
+    fetch:
+      type: string
+    clean:
+      type: string
+  additionalProperties: false
