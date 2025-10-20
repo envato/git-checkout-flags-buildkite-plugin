@@ -9,9 +9,8 @@ steps:
   - command: make test
     plugins:
       - envato/git-checkout-flags#v1.0.0:
-          clone: "--depth=1 --no-tags"
-          fetch: "--prune"
-          clean: "-ffdx"
+          clone: "<clone-flags>"
+          fetch: "<fetch-flags>"
 ```
 
 ## Configuration
