@@ -143,7 +143,7 @@ exit 0
 EOF
   chmod +x "$tmpdir/git"
 
-  run bash -c "cd '$tmpdir' && unset BUILDKITE_GIT_FETCH_FLAGS && PATH='$tmpdir':\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS}"
+  run bash -c "export BUILDKITE_BUILD_CHECKOUT_PATH='$tmpdir' && unset BUILDKITE_GIT_FETCH_FLAGS && PATH='$tmpdir':\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS}"
 
   rm -rf "$tmpdir"
 
@@ -157,7 +157,7 @@ EOF
   tmpdir=$(mktemp -d)
   mkdir -p "$tmpdir/.git"
 
-  run bash -c "cd '$tmpdir' && PATH=/tmp:\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS:-}"
+  run bash -c "export BUILDKITE_BUILD_CHECKOUT_PATH='$tmpdir' && PATH=/tmp:\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS:-}"
 
   rm -rf "$tmpdir"
 
@@ -170,7 +170,7 @@ EOF
 
   tmpdir=$(mktemp -d)
 
-  run bash -c "cd '$tmpdir' && source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS:-}"
+  run bash -c "export BUILDKITE_BUILD_CHECKOUT_PATH='$tmpdir' && source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS:-}"
 
   rm -rf "$tmpdir"
 
@@ -186,7 +186,7 @@ EOF
   mkdir -p "$tmpdir/.git"
   touch "$tmpdir/.git/shallow"
 
-  run bash -c "cd '$tmpdir' && PATH=/tmp:\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \$BUILDKITE_GIT_FETCH_FLAGS"
+  run bash -c "export BUILDKITE_BUILD_CHECKOUT_PATH='$tmpdir' && PATH=/tmp:\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \$BUILDKITE_GIT_FETCH_FLAGS"
 
   rm -rf "$tmpdir"
 

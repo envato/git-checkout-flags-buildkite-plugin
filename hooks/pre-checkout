@@ -16,11 +16,15 @@ if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}" ]]; then
       ;;
     unshallow)
       is_shallow=false
-      if git rev-parse --git-dir > /dev/null 2>&1; then
-        if shallow_check=$(git rev-parse --is-shallow-repository 2>/dev/null); then
-          [[ "$shallow_check" == "true" ]] && is_shallow=true
-        elif [[ -f .git/shallow ]]; then
-          is_shallow=true
+      checkout_path="${BUILDKITE_BUILD_CHECKOUT_PATH:-}"
+
+      if [[ -n "$checkout_path" ]] && [[ -d "$checkout_path" ]]; then
+        if (cd "$checkout_path" && git rev-parse --git-dir > /dev/null 2>&1); then
+          if shallow_check=$(cd "$checkout_path" && git rev-parse --is-shallow-repository 2>/dev/null); then
+            [[ "$shallow_check" == "true" ]] && is_shallow=true
+          elif [[ -f "$checkout_path/.git/shallow" ]]; then
+            is_shallow=true
+          fi
         fi
       fi
 
