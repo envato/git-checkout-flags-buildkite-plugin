@@ -122,3 +122,74 @@ load "$BATS_PLUGIN_PATH/load.bash"
   assert_line --index 1 "-v --no-tags --prune --depth=1"
   assert_line --index 2 "-ffdx"
 }
+
+@test "Applies unshallow preset when repo is shallow (fallback detection)" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET="unshallow"
+
+  tmpdir=$(mktemp -d)
+  mkdir -p "$tmpdir/.git"
+  touch "$tmpdir/.git/shallow"
+  cat > "$tmpdir/git" << 'EOF'
+#!/bin/bash
+if [[ "$1" == "rev-parse" ]]; then
+  if [[ "$2" == "--git-dir" ]]; then
+    echo ".git"
+    exit 0
+  elif [[ "$2" == "--is-shallow-repository" ]]; then
+    exit 1
+  fi
+fi
+exit 0
+EOF
+  chmod +x "$tmpdir/git"
+
+  run bash -c "cd '$tmpdir' && unset BUILDKITE_GIT_FETCH_FLAGS && PATH='$tmpdir':\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS}"
+
+  rm -rf "$tmpdir"
+
+  assert_success
+  assert_output "-v --prune --unshallow"
+}
+
+@test "Applies unshallow preset when repo is not shallow (fallback detection)" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET="unshallow"
+
+  tmpdir=$(mktemp -d)
+  mkdir -p "$tmpdir/.git"
+
+  run bash -c "cd '$tmpdir' && PATH=/tmp:\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS:-}"
+
+  rm -rf "$tmpdir"
+
+  assert_success
+  assert_output ""
+}
+
+@test "Applies unshallow preset when not in a git repo" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET="unshallow"
+
+  tmpdir=$(mktemp -d)
+
+  run bash -c "cd '$tmpdir' && source '$PWD/hooks/pre-checkout' > /dev/null && echo \${BUILDKITE_GIT_FETCH_FLAGS:-}"
+
+  rm -rf "$tmpdir"
+
+  assert_success
+  assert_output ""
+}
+
+@test "Explicit fetch flag overrides unshallow preset" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET="unshallow"
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH="--depth=10"
+
+  tmpdir=$(mktemp -d)
+  mkdir -p "$tmpdir/.git"
+  touch "$tmpdir/.git/shallow"
+
+  run bash -c "cd '$tmpdir' && PATH=/tmp:\$PATH source '$PWD/hooks/pre-checkout' > /dev/null && echo \$BUILDKITE_GIT_FETCH_FLAGS"
+
+  rm -rf "$tmpdir"
+
+  assert_success
+  assert_output "--depth=10"
+}

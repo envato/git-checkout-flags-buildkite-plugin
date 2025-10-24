@@ -32,8 +32,7 @@ steps:
 Use a predefined set of flags. Available presets:
 
 - `shallow`: Optimized for fast, shallow clones with minimal history
-  - Clone flags: `-v --single-branch --depth=1 --filter=blob:none`
-  - Fetch flags: `-v --no-tags --prune --depth=1`
+- `unshallow`: Detects shallow repositories (from a previous job) and fetches full history
 
 Explicit `clone`, `fetch`, or `clean` options will override preset values.
 

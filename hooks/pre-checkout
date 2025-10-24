@@ -14,6 +14,24 @@ if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}" ]]; then
       echo "  BUILDKITE_GIT_CLONE_FLAGS: ${BUILDKITE_GIT_CLONE_FLAGS}"
       echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
       ;;
+    unshallow)
+      is_shallow=false
+      if git rev-parse --git-dir > /dev/null 2>&1; then
+        if shallow_check=$(git rev-parse --is-shallow-repository 2>/dev/null); then
+          [[ "$shallow_check" == "true" ]] && is_shallow=true
+        elif [[ -f .git/shallow ]]; then
+          is_shallow=true
+        fi
+      fi
+
+      if [[ "$is_shallow" == "true" ]]; then
+        export BUILDKITE_GIT_FETCH_FLAGS="-v --prune --unshallow"
+        echo "Preset 'unshallow' applied (shallow repo detected)"
+        echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
+      else
+        echo "Preset 'unshallow' applied (repo not shallow, no action needed)"
+      fi
+      ;;
     *)
       echo "Unknown preset: ${preset}"
       exit 1
@@ -21,7 +39,6 @@ if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}" ]]; then
   esac
 fi
 
-# Explicit flags override preset values
 if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE:-}" ]]; then
   export BUILDKITE_GIT_CLONE_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE}"
   echo "Setting BUILDKITE_GIT_CLONE_FLAGS to: ${BUILDKITE_GIT_CLONE_FLAGS}"
