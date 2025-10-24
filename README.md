@@ -4,6 +4,18 @@ A minimal [Buildkite plugin](https://buildkite.com/docs/agent/v3/plugins) that a
 
 ## Example
 
+Using a preset:
+
+```yaml
+steps:
+  - command: make test
+    plugins:
+      - envato/git-checkout-flags#v1.0.0:
+          preset: shallow
+```
+
+Using custom flags:
+
 ```yaml
 steps:
   - command: make test
@@ -14,6 +26,16 @@ steps:
 ```
 
 ## Configuration
+
+### `preset` (optional, string)
+
+Use a predefined set of flags. Available presets:
+
+- `shallow`: Optimized for fast, shallow clones with minimal history
+  - Clone flags: `-v --single-branch --depth=1 --filter=blob:none`
+  - Fetch flags: `-v --no-tags --prune --depth=1`
+
+Explicit `clone`, `fetch`, or `clean` options will override preset values.
 
 ### `clone` (optional, string)
 

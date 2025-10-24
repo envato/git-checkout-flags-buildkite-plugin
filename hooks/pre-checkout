@@ -1,6 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
+# Apply preset if specified
+if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}" ]]; then
+  preset="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET}"
+  echo "Applying preset: ${preset}"
+
+  case "${preset}" in
+    shallow)
+      export BUILDKITE_GIT_CLONE_FLAGS="-v --single-branch --depth=1 --filter=blob:none"
+      export BUILDKITE_GIT_FETCH_FLAGS="-v --no-tags --prune --depth=1"
+      echo "Preset 'shallow' applied"
+      echo "  BUILDKITE_GIT_CLONE_FLAGS: ${BUILDKITE_GIT_CLONE_FLAGS}"
+      echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
+      ;;
+    *)
+      echo "Unknown preset: ${preset}"
+      exit 1
+      ;;
+  esac
+fi
+
+# Explicit flags override preset values
 if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE:-}" ]]; then
   export BUILDKITE_GIT_CLONE_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE}"
   echo "Setting BUILDKITE_GIT_CLONE_FLAGS to: ${BUILDKITE_GIT_CLONE_FLAGS}"

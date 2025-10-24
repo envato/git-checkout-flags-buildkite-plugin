@@ -4,6 +4,8 @@ author: https://github.com/envato
 requirements: []
 configuration:
   properties:
+    preset:
+      type: string
     clone:
       type: string
     fetch:
