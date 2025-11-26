@@ -10,7 +10,7 @@ Using a preset:
 steps:
   - command: make test
     plugins:
-      - envato/git-checkout-flags#v1.0.0:
+      - envato/git-checkout-flags#v1.1.0:
           preset: shallow
 ```
 
@@ -20,7 +20,7 @@ Using custom flags:
 steps:
   - command: make test
     plugins:
-      - envato/git-checkout-flags#v1.0.0:
+      - envato/git-checkout-flags#v1.1.0:
           clone: "<clone-flags>"
           fetch: "<fetch-flags>"
 ```
