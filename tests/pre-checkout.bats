@@ -193,3 +193,89 @@ EOF
   assert_success
   assert_output "--depth=10"
 }
+
+@test "Clears BUILDKITE_REPO when skip is true" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP="true"
+  export BUILDKITE_REPO="git@github.com:envato/example.git"
+
+  run bash -c "source '$PWD/hooks/pre-checkout' > /dev/null && echo \"[\$BUILDKITE_REPO]\""
+
+  assert_success
+  assert_output "[]"
+}
+
+@test "Announces that the checkout is skipped" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP="true"
+
+  run "$PWD/hooks/pre-checkout"
+
+  assert_success
+  assert_output --partial "Skipping the checkout"
+}
+
+@test "Accepts on and 1 as skip values" {
+  export BUILDKITE_REPO="git@github.com:envato/example.git"
+
+  for value in on 1; do
+    run bash -c "export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP='$value' && source '$PWD/hooks/pre-checkout' > /dev/null && echo \"[\$BUILDKITE_REPO]\""
+
+    assert_success
+    assert_output "[]"
+  done
+}
+
+@test "Leaves BUILDKITE_REPO alone when skip is false" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP="false"
+  export BUILDKITE_REPO="git@github.com:envato/example.git"
+
+  run bash -c "source '$PWD/hooks/pre-checkout' > /dev/null && echo \$BUILDKITE_REPO"
+
+  assert_success
+  assert_output "git@github.com:envato/example.git"
+}
+
+@test "Leaves BUILDKITE_REPO alone when skip is not provided" {
+  unset BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP
+  export BUILDKITE_REPO="git@github.com:envato/example.git"
+
+  run bash -c "source '$PWD/hooks/pre-checkout' > /dev/null && echo \$BUILDKITE_REPO"
+
+  assert_success
+  assert_output "git@github.com:envato/example.git"
+}
+
+@test "Skip takes precedence over the other options" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP="true"
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET="shallow"
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE="--depth=5"
+  export BUILDKITE_REPO="git@github.com:envato/example.git"
+
+  run bash -c "source '$PWD/hooks/pre-checkout' > /dev/null && echo \"[\$BUILDKITE_REPO]\" && echo \"[\${BUILDKITE_GIT_CLONE_FLAGS:-}]\""
+
+  assert_success
+  assert_line --index 0 "[]"
+  assert_line --index 1 "[]"
+}
+
+@test "Warns that the other options are ignored when skipping" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP="true"
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE="--depth=5"
+
+  run "$PWD/hooks/pre-checkout"
+
+  assert_success
+  assert_output --partial "Ignoring the other options"
+}
+
+@test "Does not warn about other options when none are set" {
+  export BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP="true"
+  unset BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET
+  unset BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE
+  unset BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH
+  unset BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLEAN
+
+  run "$PWD/hooks/pre-checkout"
+
+  assert_success
+  refute_output --partial "Ignoring the other options"
+}

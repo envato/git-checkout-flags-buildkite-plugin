@@ -1,59 +1,80 @@
 #!/bin/bash
 set -euo pipefail
 
-# Apply preset if specified
-if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}" ]]; then
-  preset="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET}"
-  echo "Applying preset: ${preset}"
+# Skip the checkout entirely, for steps that never read the codebase.
+#
+# Blanking the repository is the agent's own mechanism for this: with no
+# repository to clone it allocates a fresh temporary directory for the job,
+# skips the checkout, and removes the directory afterwards. Any existing
+# checkout on the agent is left alone, so the next job that lands there still
+# gets an incremental fetch rather than a full clone.
+#
+# The temporary directory also means no repository-local hooks are found. That
+# matters: BUILDKITE_SKIP_CHECKOUT, the other way to skip, keeps using the
+# agent's normal checkout directory, from where a tree left by an earlier job
+# would still supply .buildkite/hooks.
+if [[ "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_SKIP:-false}" =~ ^(true|on|1)$ ]]; then
+  export BUILDKITE_REPO=""
+  echo "Skipping the checkout (BUILDKITE_REPO cleared)"
 
-  case "${preset}" in
-    shallow)
-      export BUILDKITE_GIT_CLONE_FLAGS="-v --single-branch --depth=1 --filter=blob:none"
-      export BUILDKITE_GIT_FETCH_FLAGS="-v --no-tags --prune --depth=1"
-      echo "Preset 'shallow' applied"
-      echo "  BUILDKITE_GIT_CLONE_FLAGS: ${BUILDKITE_GIT_CLONE_FLAGS}"
-      echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
-      ;;
-    unshallow)
-      is_shallow=false
-      checkout_path="${BUILDKITE_BUILD_CHECKOUT_PATH:-}"
+  if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE:-}${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH:-}${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLEAN:-}" ]]; then
+    echo "Ignoring the other options, there is nothing to check out"
+  fi
+else
+  # Apply preset if specified
+  if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET:-}" ]]; then
+    preset="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_PRESET}"
+    echo "Applying preset: ${preset}"
 
-      if [[ -n "$checkout_path" ]] && [[ -d "$checkout_path" ]]; then
-        if (cd "$checkout_path" && git rev-parse --git-dir > /dev/null 2>&1); then
-          if shallow_check=$(cd "$checkout_path" && git rev-parse --is-shallow-repository 2>/dev/null); then
-            [[ "$shallow_check" == "true" ]] && is_shallow=true
-          elif [[ -f "$checkout_path/.git/shallow" ]]; then
-            is_shallow=true
+    case "${preset}" in
+      shallow)
+        export BUILDKITE_GIT_CLONE_FLAGS="-v --single-branch --depth=1 --filter=blob:none"
+        export BUILDKITE_GIT_FETCH_FLAGS="-v --no-tags --prune --depth=1"
+        echo "Preset 'shallow' applied"
+        echo "  BUILDKITE_GIT_CLONE_FLAGS: ${BUILDKITE_GIT_CLONE_FLAGS}"
+        echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
+        ;;
+      unshallow)
+        is_shallow=false
+        checkout_path="${BUILDKITE_BUILD_CHECKOUT_PATH:-}"
+
+        if [[ -n "$checkout_path" ]] && [[ -d "$checkout_path" ]]; then
+          if (cd "$checkout_path" && git rev-parse --git-dir > /dev/null 2>&1); then
+            if shallow_check=$(cd "$checkout_path" && git rev-parse --is-shallow-repository 2>/dev/null); then
+              [[ "$shallow_check" == "true" ]] && is_shallow=true
+            elif [[ -f "$checkout_path/.git/shallow" ]]; then
+              is_shallow=true
+            fi
           fi
         fi
-      fi
 
-      if [[ "$is_shallow" == "true" ]]; then
-        export BUILDKITE_GIT_FETCH_FLAGS="-v --prune --unshallow"
-        echo "Preset 'unshallow' applied (shallow repo detected)"
-        echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
-      else
-        echo "Preset 'unshallow' applied (repo not shallow, no action needed)"
-      fi
-      ;;
-    *)
-      echo "Unknown preset: ${preset}"
-      exit 1
-      ;;
-  esac
-fi
+        if [[ "$is_shallow" == "true" ]]; then
+          export BUILDKITE_GIT_FETCH_FLAGS="-v --prune --unshallow"
+          echo "Preset 'unshallow' applied (shallow repo detected)"
+          echo "  BUILDKITE_GIT_FETCH_FLAGS: ${BUILDKITE_GIT_FETCH_FLAGS}"
+        else
+          echo "Preset 'unshallow' applied (repo not shallow, no action needed)"
+        fi
+        ;;
+      *)
+        echo "Unknown preset: ${preset}"
+        exit 1
+        ;;
+    esac
+  fi
 
-if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE:-}" ]]; then
-  export BUILDKITE_GIT_CLONE_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE}"
-  echo "Setting BUILDKITE_GIT_CLONE_FLAGS to: ${BUILDKITE_GIT_CLONE_FLAGS}"
-fi
+  if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE:-}" ]]; then
+    export BUILDKITE_GIT_CLONE_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLONE}"
+    echo "Setting BUILDKITE_GIT_CLONE_FLAGS to: ${BUILDKITE_GIT_CLONE_FLAGS}"
+  fi
 
-if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH:-}" ]]; then
-  export BUILDKITE_GIT_FETCH_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH}"
-  echo "Setting BUILDKITE_GIT_FETCH_FLAGS to: ${BUILDKITE_GIT_FETCH_FLAGS}"
-fi
+  if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH:-}" ]]; then
+    export BUILDKITE_GIT_FETCH_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_FETCH}"
+    echo "Setting BUILDKITE_GIT_FETCH_FLAGS to: ${BUILDKITE_GIT_FETCH_FLAGS}"
+  fi
 
-if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLEAN:-}" ]]; then
-  export BUILDKITE_GIT_CLEAN_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLEAN}"
-  echo "Setting BUILDKITE_GIT_CLEAN_FLAGS to: ${BUILDKITE_GIT_CLEAN_FLAGS}"
+  if [[ -n "${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLEAN:-}" ]]; then
+    export BUILDKITE_GIT_CLEAN_FLAGS="${BUILDKITE_PLUGIN_GIT_CHECKOUT_FLAGS_CLEAN}"
+    echo "Setting BUILDKITE_GIT_CLEAN_FLAGS to: ${BUILDKITE_GIT_CLEAN_FLAGS}"
+  fi
 fi
